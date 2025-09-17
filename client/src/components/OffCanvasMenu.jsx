@@ -1,55 +1,56 @@
-import { Home, MessageCircle, History, StickyNote, Settings, LayoutDashboard, Search, LayoutTemplate, UserCircle, X } from "lucide-react";
-import { useLocation } from "wouter";
+import { X } from "lucide-react";
+// import { useLocation } from "wouter"; // Removed useLocation as it's not needed here
 
-const navItems = [
-  { path: "/", icon: Home, label: "Home", testId: "nav-home" },
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", testId: "nav-dashboard" },
-  { path: "/search", icon: Search, label: "Search", testId: "nav-search" },
-  { path: "/templates", icon: LayoutTemplate, label: "Templates", testId: "nav-templates" },
-  { path: "/profile", icon: UserCircle, label: "Profile", testId: "nav-profile" },
-  { path: "/chat", icon: MessageCircle, label: "Chat", testId: "nav-chat" },
-  { path: "/history", icon: History, label: "History", testId: "nav-history" },
-  { path: "/notes", icon: StickyNote, label: "Notes", testId: "nav-notes" },
-  { path: "/settings", icon: Settings, label: "Settings", testId: "nav-settings" },
-];
-
-export function OffCanvasMenu({ isOpen, onClose }) {
-  const [location, setLocation] = useLocation();
+export function OffCanvasMenu({ isOpen, onClose, overflowItems, currentLocation }) {
+  // const [location, navigate] = useLocation(); // Removed as navigation is handled by prop
 
   const handleNavigation = (path) => {
-    setLocation(path);
+    // navigate(path); // Removed as navigation is handled by prop
     onClose();
   };
 
   return (
     <div
-      className={`fixed inset-0 z-50 transform ${isOpen ? "translate-x-0" : "translate-x-full"} transition-transform duration-300 ease-in-out bg-background md:hidden`}
+      className={`fixed inset-x-0 bottom-0 z-50 transform ${isOpen ? "translate-y-0" : "translate-y-full"} transition-transform duration-300 ease-in-out md:hidden`}
     >
-      <div className="flex justify-end p-4">
-        <button onClick={onClose} className="text-foreground">
-          <X className="w-6 h-6" />
+      <div
+        className="relative flex flex-col items-center gap-1 px-2 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-t-2xl shadow-2xl"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
+          boxShadow:
+            "0 -20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1), inset 0 -1px 0 rgba(255,255,255,0.2)",
+        }}
+      >
+        {/* Close button */}
+        <button onClick={onClose} className="absolute top-1 right-1 text-foreground p-1 rounded-full hover:bg-white/20 transition-colors">
+          <X className="w-5 h-5" />
         </button>
+
+        {/* Dock background glow */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent rounded-t-2xl pointer-events-none" />
+
+        <nav className="flex flex-wrap justify-center gap-2 py-2">
+          {overflowItems.map(({ path, icon: Icon, label, testId }) => {
+            const isActive =
+              currentLocation === path ||
+              (path !== "/" && currentLocation.startsWith(path));
+            return (
+              <button
+                key={path}
+                className={`relative w-16 h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300 ease-out hover:shadow-lg group ${
+                  isActive ? "bg-blue-500" : "bg-gray-600"
+                }`}
+                onClick={() => handleNavigation(path)}
+                data-testid={testId}
+              >
+                <Icon className="w-8 h-8 text-white relative z-10 drop-shadow-sm" />
+                <span className="text-xs text-white mt-1">{label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
-      <nav className="flex flex-col items-center space-y-4 py-8">
-        {navItems.map(({ path, icon: Icon, label, testId }) => {
-          const isActive = location === path || (path !== "/" && location.startsWith(path));
-          return (
-            <button
-              key={path}
-              className={`flex items-center space-x-3 px-4 py-2 rounded-lg w-full max-w-xs justify-center ${
-                isActive
-                  ? "bg-blue-500 text-white"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-              onClick={() => handleNavigation(path)}
-              data-testid={testId}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="text-lg font-medium">{label}</span>
-            </button>
-          );
-        })}
-      </nav>
     </div>
   );
 }

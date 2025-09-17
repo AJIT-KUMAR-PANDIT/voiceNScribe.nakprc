@@ -1,4 +1,5 @@
 import { Switch, Route } from "wouter";
+import { useLocation } from "wouter";
 import { useState } from "react";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { TopNav } from "./components/TopNav";
@@ -37,6 +38,8 @@ function Router() {
 function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState("/");
+  const [overflowItems, setOverflowItems] = useState([]);
 
   return (
     <ThemeProvider>
@@ -51,12 +54,10 @@ function App() {
         <BottomNav
           onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
           isMenuOpen={isMenuOpen}
+          setOverflowNavItems={setOverflowItems}
+          overflowItems={overflowItems}
         />
         <LoadingModal isOpen={isLoading} onClose={() => setIsLoading(false)} />
-        <OffCanvasMenu
-          isOpen={isMenuOpen}
-          onClose={() => setIsMenuOpen(false)}
-        />
       </div>
     </ThemeProvider>
   );
