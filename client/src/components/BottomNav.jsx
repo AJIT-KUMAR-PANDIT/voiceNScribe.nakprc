@@ -229,7 +229,7 @@ export default function BottomNav({ setOverflowNavItems, overflowItems = [] }) {
   return (
     <>
       {/* Bottom Navigation Dock */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-2 sm:pb-4 px-2 sm:px-4">
+      <div className=" fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-2 sm:pb-4 px-2 sm:px-4">
         <div
           ref={dockRef}
           className="relative flex flex-col items-center"
@@ -253,7 +253,7 @@ export default function BottomNav({ setOverflowNavItems, overflowItems = [] }) {
             }}
           >
             {/* Dock background glow */}
-            <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
+            <div className="bg-[#00800079] absolute inset-0 bg-gradient-to-t from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
 
             {visibleNavItems.map(
               ({ path, icon: Icon, label, testId, color }, index) => {

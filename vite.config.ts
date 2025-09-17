@@ -39,7 +39,7 @@ export default defineConfig({
     host: "0.0.0.0", // required for external access
     port: 5173, // your vite dev port
     allowedHosts: [
-      "1a18e9b5688e.ngrok-free.app", // ✅ allow your ngrok domain
+      "45ced58b4d1c.ngrok-free.app", // ✅ allow your ngrok domain
     ],
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",
