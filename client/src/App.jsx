@@ -41,7 +41,7 @@ function App() {
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <TopNav />
 
-        <main className="flex-1 container mx-auto px-4 py-6">
+        <main className="flex-1 container mx-auto px-4 py-6 mb-16">
           <Router />
         </main>
 
