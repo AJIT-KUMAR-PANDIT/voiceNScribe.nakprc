@@ -11,10 +11,10 @@ export default defineConfig({
     process.env.REPL_ID !== undefined
       ? [
           await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
+            m.cartographer()
           ),
           await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
+            m.devBanner()
           ),
         ]
       : []),
@@ -32,6 +32,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: "0.0.0.0", // required for external access
+    port: 5173, // your vite dev port
+    allowedHosts: [
+      "1a18e9b5688e.ngrok-free.app", // ✅ allow your ngrok domain
+    ],
     fs: {
       strict: true,
       deny: ["**/.*"],
