@@ -4,6 +4,7 @@ import { ThemeProvider } from "./components/ThemeProvider";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
 import { LoadingModal } from "./components/LoadingModal";
+import { OffCanvasMenu } from "./components/OffCanvasMenu";
 import RecordingScreen from "./pages/RecordingScreen";
 import TranscriptionScreen from "./pages/TranscriptionScreen";
 import NotesScreen from "./pages/NotesScreen";
@@ -24,6 +25,10 @@ function Router() {
       <Route path="/history" component={HistoryScreen} />
       <Route path="/chat" component={ChatScreen} />
       <Route path="/settings" component={SettingsScreen} />
+      <Route path="/dashboard" component={DashboardScreen} />
+      <Route path="/search" component={SearchScreen} />
+      <Route path="/templates" component={TemplatesScreen} />
+      <Route path="/profile" component={ProfileScreen} />
       <Route component={RecordingScreen} />
     </Switch>
   );
@@ -31,6 +36,7 @@ function Router() {
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <ThemeProvider>
@@ -41,8 +47,9 @@ function App() {
           <Router />
         </main>
         
-        <BottomNav />
+        <BottomNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
         <LoadingModal isOpen={isLoading} onClose={() => setIsLoading(false)} />
+        <OffCanvasMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       </div>
     </ThemeProvider>
   );
