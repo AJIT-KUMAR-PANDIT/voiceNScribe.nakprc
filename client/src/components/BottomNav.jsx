@@ -92,16 +92,19 @@ function OverflowMenu({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+      {/* Backdrop - only covers the area above the dock */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        style={{ bottom: "120px" }} // Leave space for the dock + labels
         onClick={onClose}
       />
 
       {/* Menu */}
-      <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-6 m-4 max-w-sm w-full">
+      <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-4 sm:p-6 m-4 max-w-xs sm:max-w-sm w-full mb-32">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold text-lg">More Apps</h3>
+          <h3 className="text-white font-semibold text-base sm:text-lg">
+            More Apps
+          </h3>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -110,7 +113,7 @@ function OverflowMenu({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {overflowItems.map(({ path, icon: Icon, label, testId, color }) => {
             const isActive =
               currentLocation === path ||
@@ -123,18 +126,18 @@ function OverflowMenu({
                   onNavigate(path);
                   onClose();
                 }}
-                className={`flex flex-col items-center space-y-2 p-3 rounded-2xl transition-all duration-300 hover:scale-105 ${
+                className={`flex flex-col items-center space-y-2 p-2 sm:p-3 rounded-2xl transition-all duration-300 hover:scale-105 ${
                   isActive ? "bg-white/20" : "hover:bg-white/10"
                 }`}
                 data-testid={testId}
               >
                 <div
-                  className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center shadow-lg`}
+                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${color} flex items-center justify-center shadow-lg relative`}
                 >
                   <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/30 via-transparent to-transparent opacity-60" />
-                  <Icon className="w-6 h-6 text-white relative z-10 drop-shadow-sm" />
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white relative z-10 drop-shadow-sm" />
                 </div>
-                <span className="text-white text-xs font-medium text-center">
+                <span className="text-white text-xs font-medium text-center leading-tight">
                   {label}
                 </span>
               </button>
@@ -146,16 +149,11 @@ function OverflowMenu({
   );
 }
 
-export function BottomNav({
-  onMenuToggle,
-  isMenuOpen,
-  setOverflowNavItems,
-  overflowItems = [],
-}) {
+export default function BottomNav({ setOverflowNavItems, overflowItems = [] }) {
   const [location, navigate] = useLocation();
   const [hoveredIndex, setHoveredIndex] = useState(-1);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [visibleNavItems, setVisibleNavItems] = useState(navItems);
+  const [visibleNavItems, setVisibleNavItems] = useState([]);
+  const [overflowNavItems, setOverflowNavItemsLocal] = useState([]);
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
   const dockRef = useRef(null);
 
@@ -163,23 +161,33 @@ export function BottomNav({
   const calculateFittingItems = useCallback(() => {
     if (!dockRef.current) return;
 
-    const containerWidth = dockRef.current.offsetWidth;
-    const itemWidth = 64; // Width of each dock item
-    const gap = 8; // Gap between items
-    const padding = 32; // Padding on both sides
-    const menuButtonWidth = overflowItems.length > 0 ? 72 : 0; // Menu button + divider width
+    const containerWidth = window.innerWidth;
+    const isSmallScreen = containerWidth < 640; // sm breakpoint
+    const itemWidth = isSmallScreen ? 56 : 64; // Smaller on mobile
+    const gap = isSmallScreen ? 6 : 8;
+    const padding = isSmallScreen ? 24 : 32;
+    const menuButtonWidth = 72;
 
-    const availableWidth = containerWidth - padding - menuButtonWidth;
+    // Always reserve space for menu button on mobile
+    const availableWidth =
+      containerWidth - padding - (isSmallScreen ? menuButtonWidth : 0);
     const maxVisibleItems = Math.floor(availableWidth / (itemWidth + gap));
 
-    const newVisibleItems = navItems.slice(0, Math.max(1, maxVisibleItems));
-    const newOverflowItems = navItems.slice(maxVisibleItems);
+    // On mobile, show fewer items to ensure menu button is always visible
+    const actualMaxItems = isSmallScreen
+      ? Math.min(maxVisibleItems, 4)
+      : maxVisibleItems;
+
+    const newVisibleItems = navItems.slice(0, Math.max(1, actualMaxItems));
+    const newOverflowItems = navItems.slice(actualMaxItems);
 
     setVisibleNavItems(newVisibleItems);
+    setOverflowNavItemsLocal(newOverflowItems);
+
     if (setOverflowNavItems) {
       setOverflowNavItems(newOverflowItems);
     }
-  }, [setOverflowNavItems, overflowItems.length]);
+  }, [setOverflowNavItems]);
 
   useEffect(() => {
     calculateFittingItems();
@@ -188,34 +196,23 @@ export function BottomNav({
     return () => window.removeEventListener("resize", handleResize);
   }, [calculateFittingItems]);
 
-  const handleMouseMove = (e) => {
-    if (dockRef.current) {
-      const rect = dockRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
-  };
-
   const handleNavigation = (path) => {
     navigate(path);
   };
 
   const handleMenuToggle = () => {
     setShowOverflowMenu(!showOverflowMenu);
-    if (onMenuToggle) onMenuToggle();
   };
 
   const getIconScale = (index) => {
-    if (hoveredIndex === -1) return 1;
+    if (hoveredIndex === -1 || window.innerWidth < 640) return 1; // Disable scaling on mobile
 
     const distance = Math.abs(index - hoveredIndex);
-    const maxScale = 1.6;
+    const maxScale = 1.4; // Reduced for better mobile experience
     const minScale = 1;
 
     if (distance === 0) return maxScale;
-    if (distance === 1) return 1.3;
+    if (distance === 1) return 1.2;
     if (distance === 2) return 1.1;
 
     return minScale;
@@ -223,128 +220,193 @@ export function BottomNav({
 
   const getIconTransform = (index) => {
     const scale = getIconScale(index);
-    const translateY = scale > 1.2 ? -12 : 0;
+    const translateY = scale > 1.1 ? -8 : 0; // Reduced movement
     return `scale(${scale}) translateY(${translateY}px)`;
   };
 
+  const showMenuButton = overflowNavItems.length > 0 || window.innerWidth < 640;
+
   return (
     <>
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-4 px-4 ${
-          isMenuOpen ? "hidden" : ""
-        }`}
-      >
+      {/* Bottom Navigation Dock */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-2 sm:pb-4 px-2 sm:px-4">
         <div
           ref={dockRef}
-          className="relative flex items-end gap-2 px-4 py-3 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoveredIndex(-1)}
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
-            boxShadow:
-              "0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.2)",
-            minWidth: "320px",
-            maxWidth: "90vw",
+          className="relative flex flex-col items-center"
+          onMouseMove={(e) => {
+            if (window.innerWidth >= 640) {
+              setHoveredIndex(-1); // Reset on mouse move to calculate properly
+            }
           }}
+          onMouseLeave={() => setHoveredIndex(-1)}
         >
-          {/* Dock background glow */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent rounded-2xl pointer-events-none" />
+          {/* Combined Icon Container with integrated labels */}
+          <div
+            className="flex items-end justify-evenly px-3 sm:px-4 py-2 sm:py-3 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl sm:rounded-2xl shadow-2xl w-full"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
+              boxShadow:
+                "0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.2)",
+              minWidth: "320px",
+              maxWidth: "95vw",
+            }}
+          >
+            {/* Dock background glow */}
+            <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent rounded-xl sm:rounded-2xl pointer-events-none" />
 
-          {visibleNavItems.map(
-            ({ path, icon: Icon, label, testId, color }, index) => {
-              const isActive =
-                location === path ||
-                (path !== "/" && location.startsWith(path));
+            {visibleNavItems.map(
+              ({ path, icon: Icon, label, testId, color }, index) => {
+                const isActive =
+                  location === path ||
+                  (path !== "/" && location.startsWith(path));
 
-              return (
+                return (
+                  <div
+                    key={path}
+                    className="relative flex flex-col items-center gap-1"
+                    onMouseEnter={() => {
+                      if (window.innerWidth >= 640) {
+                        setHoveredIndex(index);
+                      }
+                    }}
+                  >
+                    {/* Tooltip on hover - Desktop only */}
+                    {hoveredIndex === index && window.innerWidth >= 640 && (
+                      <div className="absolute -top-16 px-2 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-xs rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95 duration-200 whitespace-nowrap z-10">
+                        {label}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/90" />
+                      </div>
+                    )}
+
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full shadow-lg" />
+                    )}
+
+                    <button
+                      className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-200 ease-out hover:shadow-lg group ${color}`}
+                      onClick={() => handleNavigation(path)}
+                      data-testid={testId}
+                      style={{
+                        transform: getIconTransform(index),
+                        transformOrigin: "bottom center",
+                      }}
+                    >
+                      {/* Icon glow effect */}
+                      <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-tr from-white/30 via-transparent to-transparent opacity-60" />
+
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white relative z-10 drop-shadow-sm" />
+
+                      {/* Reflection effect */}
+                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent rounded-b-lg sm:rounded-b-xl" />
+                    </button>
+
+                    {/* Label directly below icon */}
+                    <span
+                      className={`text-xs font-medium text-center transition-all duration-200 leading-3 ${
+                        isActive ? "text-white" : "text-white/70"
+                      } ${
+                        hoveredIndex === index && window.innerWidth >= 640
+                          ? "text-white font-semibold"
+                          : ""
+                      }`}
+                      style={{
+                        fontSize:
+                          hoveredIndex === index && window.innerWidth >= 640
+                            ? "0.65rem"
+                            : "0.6rem",
+                        maxWidth: "48px",
+                        wordWrap: "break-word",
+                        hyphens: "auto",
+                      }}
+                    >
+                      {label.length > 8 ? label.substring(0, 6) + ".." : label}
+                    </span>
+                  </div>
+                );
+              }
+            )}
+
+            {/* Show menu button if there are overflow items OR on mobile */}
+            {showMenuButton && (
+              <>
+                {/* Divider - only show on desktop when there are visible items */}
+                {visibleNavItems.length > 0 && window.innerWidth >= 640 && (
+                  <div className="w-px h-12 sm:h-16 bg-white/20 mx-1 self-center" />
+                )}
+
+                {/* Menu button with label */}
                 <div
-                  key={path}
-                  className="relative flex flex-col items-center"
-                  onMouseEnter={() => setHoveredIndex(index)}
+                  className="relative flex flex-col items-center gap-1"
+                  onMouseEnter={() => {
+                    if (window.innerWidth >= 640) {
+                      setHoveredIndex(visibleNavItems.length);
+                    }
+                  }}
                 >
-                  {/* Tooltip */}
-                  {hoveredIndex === index && (
-                    <div className="absolute -top-16 px-3 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-sm rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95 duration-200 whitespace-nowrap z-10">
-                      {label}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/90" />
-                    </div>
-                  )}
-
-                  {/* Active indicator */}
-                  {isActive && (
-                    <div className="absolute -bottom-2 w-1 h-1 bg-white rounded-full shadow-lg animate-pulse" />
-                  )}
+                  {/* Tooltip - Desktop only */}
+                  {hoveredIndex === visibleNavItems.length &&
+                    window.innerWidth >= 640 && (
+                      <div className="absolute -top-16 px-2 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-xs rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95 duration-200">
+                        More Apps
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/90" />
+                      </div>
+                    )}
 
                   <button
-                    className={`relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 ease-out hover:shadow-lg group ${color}`}
-                    onClick={() => handleNavigation(path)}
-                    data-testid={testId}
+                    className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-200 ease-out hover:shadow-lg group ${
+                      showOverflowMenu ? "bg-blue-500" : "bg-gray-600"
+                    }`}
+                    onClick={handleMenuToggle}
+                    aria-label="Open menu"
                     style={{
-                      transform: getIconTransform(index),
+                      transform: getIconTransform(visibleNavItems.length),
                       transformOrigin: "bottom center",
                     }}
                   >
                     {/* Icon glow effect */}
-                    <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                     {/* Shine effect */}
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/30 via-transparent to-transparent opacity-60" />
+                    <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-tr from-white/30 via-transparent to-transparent opacity-60" />
 
-                    <Icon className="w-6 h-6 text-white relative z-10 drop-shadow-sm" />
+                    <Menu className="w-5 h-5 sm:w-6 sm:h-6 text-white relative z-10 drop-shadow-sm" />
 
                     {/* Reflection effect */}
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent rounded-b-xl" />
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent rounded-b-lg sm:rounded-b-xl" />
                   </button>
+
+                  {/* Menu label directly below button */}
+                  <span
+                    className={`text-xs font-medium text-center transition-all duration-200 leading-3 ${
+                      showOverflowMenu
+                        ? "text-white font-semibold"
+                        : "text-white/70"
+                    } ${
+                      hoveredIndex === visibleNavItems.length &&
+                      window.innerWidth >= 640
+                        ? "text-white font-semibold"
+                        : ""
+                    }`}
+                    style={{
+                      fontSize:
+                        hoveredIndex === visibleNavItems.length &&
+                        window.innerWidth >= 640
+                          ? "0.65rem"
+                          : "0.6rem",
+                      maxWidth: "48px",
+                    }}
+                  >
+                    Menu
+                  </span>
                 </div>
-              );
-            }
-          )}
-
-          {/* Show menu button and divider only if there are overflow items */}
-          {overflowItems.length > 0 && (
-            <>
-              {/* Divider */}
-              <div className="w-px h-8 bg-white/20 mx-1" />
-
-              {/* Menu button */}
-              <div
-                className="relative flex flex-col items-center"
-                onMouseEnter={() => setHoveredIndex(visibleNavItems.length)}
-              >
-                {/* Tooltip */}
-                {hoveredIndex === visibleNavItems.length && (
-                  <div className="absolute -top-16 px-3 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-sm rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95 duration-200">
-                    More Apps
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/90" />
-                  </div>
-                )}
-
-                <button
-                  className={`relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 ease-out hover:shadow-lg group ${
-                    showOverflowMenu ? "bg-blue-500" : "bg-gray-600"
-                  }`}
-                  onClick={handleMenuToggle}
-                  aria-label="Open menu"
-                  style={{
-                    transform: getIconTransform(visibleNavItems.length),
-                    transformOrigin: "bottom center",
-                  }}
-                >
-                  {/* Icon glow effect */}
-                  <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                  {/* Shine effect */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/30 via-transparent to-transparent opacity-60" />
-
-                  <Menu className="w-6 h-6 text-white relative z-10 drop-shadow-sm" />
-
-                  {/* Reflection effect */}
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent rounded-b-xl" />
-                </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -352,86 +414,10 @@ export function BottomNav({
       <OverflowMenu
         isOpen={showOverflowMenu}
         onClose={() => setShowOverflowMenu(false)}
-        overflowItems={overflowItems}
+        overflowItems={overflowNavItems}
         currentLocation={location}
         onNavigate={handleNavigation}
       />
     </>
-  );
-}
-
-// Demo component to show the dock in action
-export default function DockDemo() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("/");
-  const [overflowItems, setOverflowItems] = useState([]);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http://www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.03%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
-
-      {/* Content area */}
-      <div className="flex items-center justify-center min-h-screen p-8">
-        <div className="text-center text-white">
-          <h1 className="text-4xl font-bold mb-4">Enhanced macOS Dock</h1>
-          <p className="text-xl text-white/80 mb-8">
-            Responsive dock with overflow handling and smooth magnification
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-semibold mb-4">Core Features</h2>
-              <ul className="text-left space-y-2 text-white/90">
-                <li>• Distance-based magnification effect</li>
-                <li>• Responsive overflow handling</li>
-                <li>• Smooth animations and transitions</li>
-                <li>• Glassmorphism design</li>
-                <li>• Interactive tooltips</li>
-                <li>• Active state indicators</li>
-              </ul>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <h2 className="text-2xl font-semibold mb-4">Overflow Menu</h2>
-              <ul className="text-left space-y-2 text-white/90">
-                <li>• Auto-calculates fitting items</li>
-                <li>• Grid layout for overflow items</li>
-                <li>• Modal overlay design</li>
-                <li>• Consistent app icon styling</li>
-                <li>• Touch-friendly interactions</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 text-sm text-white/60">
-            <p>
-              Current location:{" "}
-              <span className="font-mono bg-white/10 px-2 py-1 rounded">
-                {currentLocation}
-              </span>
-            </p>
-            <p>
-              Overflow items:{" "}
-              <span className="font-mono bg-white/10 px-2 py-1 rounded">
-                {overflowItems.length}
-              </span>
-            </p>
-            <p className="mt-2">
-              Resize the window to see overflow behavior in action!
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* The dock */}
-      <BottomNav
-        onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
-        isMenuOpen={isMenuOpen}
-        currentLocation={currentLocation}
-        setOverflowNavItems={setOverflowItems}
-        overflowItems={overflowItems}
-      />
-    </div>
   );
 }

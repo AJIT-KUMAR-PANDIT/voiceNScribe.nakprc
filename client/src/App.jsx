@@ -1,11 +1,9 @@
 import { Switch, Route } from "wouter";
-import { useLocation } from "wouter";
 import { useState } from "react";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { TopNav } from "./components/TopNav";
-import { BottomNav } from "./components/BottomNav";
+import BottomNav from "./components/BottomNav";
 import { LoadingModal } from "./components/LoadingModal";
-import { OffCanvasMenu } from "./components/OffCanvasMenu";
 import RecordingScreen from "./pages/RecordingScreen";
 import TranscriptionScreen from "./pages/TranscriptionScreen";
 import NotesScreen from "./pages/NotesScreen";
@@ -37,9 +35,6 @@ function Router() {
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("/");
-  const [overflowItems, setOverflowItems] = useState([]);
 
   return (
     <ThemeProvider>
@@ -51,12 +46,7 @@ function App() {
         </main>
 
         {/* The dock */}
-        <BottomNav
-          onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
-          isMenuOpen={isMenuOpen}
-          setOverflowNavItems={setOverflowItems}
-          overflowItems={overflowItems}
-        />
+        <BottomNav />
         <LoadingModal isOpen={isLoading} onClose={() => setIsLoading(false)} />
       </div>
     </ThemeProvider>
