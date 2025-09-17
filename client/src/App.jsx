@@ -42,14 +42,21 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <TopNav />
-        
+
         <main className="flex-1 container mx-auto px-4 py-6">
           <Router />
         </main>
-        
-        <BottomNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
+
+        {/* The dock */}
+        <BottomNav
+          onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
+          isMenuOpen={isMenuOpen}
+        />
         <LoadingModal isOpen={isLoading} onClose={() => setIsLoading(false)} />
-        <OffCanvasMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+        <OffCanvasMenu
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+        />
       </div>
     </ThemeProvider>
   );
