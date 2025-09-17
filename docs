@@ -1,3 +1,93 @@
+## @remotion/whisper-web Integration Guide
+
+This document outlines the steps taken to integrate `@remotion/whisper-web` into the frontend application for live audio transcription.
+
+### 1. Installation
+
+First, install the `@remotion/whisper-web` package and ensure all `@remotion/*` packages are updated to the same exact version. This prevents potential version conflicts.
+
+```bash
+npm i --save-exact @remotion/whisper-web@4.0.347 remotion@4.0.347 @remotion/cli@4.0.347 @remotion/lambda@4.0.347 @remotion/media-utils@4.0.347 @remotion/paths@4.0.347 @remotion/shapes@4.0.347 @remotion/transitions@4.0.347
+```
+
+### 2. Vite Configuration
+
+To use `@remotion/whisper-web` with Vite, two main changes are required in `vite.config.ts`:
+
+1.  **Exclude from Dependency Optimization**: Prevent known issues by excluding `@remotion/whisper-web` from Vite's dependency optimization.
+2.  **Configure Cross-Origin Isolation Headers**: Enable `SharedArrayBuffer` support, which is a security requirement for `@remotion/whisper-web`.
+
+`vite.config.ts` modifications:
+
+```typescript
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+export default defineConfig({
+  optimizeDeps: {
+    // turn off dependency optimization: `https://github.com/vitejs/vite/issues/11672#issuecomment-1397855641`
+    exclude: ['@remotion/whisper-web'],
+  },
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    ...(process.env.NODE_ENV !== "production" &&
+    process.env.REPL_ID !== undefined
+      ? [
+          await import("@replit/vite-plugin-cartographer").then((m) =>
+            m.cartographer()
+          ),
+          await import("@replit/vite-plugin-dev-banner").then((m) =>
+            m.devBanner()
+          ),
+        ]
+      : []),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+    },
+  },
+  root: path.resolve(import.meta.dirname, "client"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+  },
+  server: {
+    host: "0.0.0.0", // required for external access
+    port: 5173, // your vite dev port
+    allowedHosts: [
+      "1a18e9b5688e.ngrok-free.app", // ✅ allow your ngrok domain
+    ],
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
+    },
+  },
+});
+```
+
+### 3. Frontend Integration (RecordingScreen.jsx)
+
+The `@remotion/whisper-web` functionality was integrated into the `RecordingScreen.jsx` component to handle audio recording, model downloading, resampling, and live transcription display.
+
+Key changes in `client/src/pages/RecordingScreen.jsx`:
+
+-   **Imports**: Added `useEffect`, `useRef`, and functions from `@remotion/whisper-web`.
+-   **State Management**: Introduced `transcription`, `isTranscribing`, `modelDownloaded` states, and `modelToUse` ref.
+-   **Model Download**: A `useEffect` hook handles the asynchronous download of the Whisper model (`tiny.en`) upon component mount.
+-   **Audio Processing and Transcription**: Another `useEffect` hook triggers when recording stops and audio chunks are available. It resamples the audio, transcribes it using the downloaded model, and updates the `transcription` state.
+-   **Display Transcription**: The transcribed text is displayed on the screen below the recording stats.
+
+```jsx
 import { useState, useEffect, useRef } from "react";
 import { MicButton } from "../components/MicButton";
 import { WaveformVisualizer } from "../components/WaveformVisualizer";
@@ -33,8 +123,7 @@ export default function RecordingScreen() {
   }, []);
 
   useEffect(() => {
-    console.log("useEffect triggered:", { isRecording, audioChunksLength: audioChunks.length, modelDownloaded, isTranscribing });
-    if (audioChunks.length > 0 && modelDownloaded && !isTranscribing) {
+    if (!isRecording && audioChunks.length > 0 && modelDownloaded && !isTranscribing) {
       const processAudio = async () => {
         setIsTranscribing(true);
         const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
@@ -53,13 +142,12 @@ export default function RecordingScreen() {
           onProgress: (p) => console.log(`Transcribing (${Math.round(p * 100)}%)...`),
         });
 
-        setTranscription((prev) => prev + newTranscription.map((t) => t.text).join(' '));
+        setTranscription(newTranscription.map((t) => t.text).join(' '));
         setIsTranscribing(false);
-        console.log("Transcription completed:", newTranscription.map((t) => t.text).join(' '));
       };
       processAudio();
     }
-  }, [audioChunks, modelDownloaded, isTranscribing]);
+  }, [isRecording, audioChunks, modelDownloaded, isTranscribing]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -98,12 +186,6 @@ export default function RecordingScreen() {
         </div>
       </div>
 
-      {modelDownloaded && (
-        <div className="mt-4 p-2 bg-green-700 rounded-lg text-white">
-          Model Loaded: Ready for Transcription
-        </div>
-      )}
-
       {transcription && (
         <div className="mt-8 p-4 bg-gray-800 rounded-lg text-left">
           <h3 className="text-xl font-bold mb-2">Transcription:</h3>
@@ -113,3 +195,4 @@ export default function RecordingScreen() {
     </div>
   );
 }
+```

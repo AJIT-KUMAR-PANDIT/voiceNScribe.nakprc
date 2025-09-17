@@ -4,6 +4,10 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
+  optimizeDeps: {
+    // turn off dependency optimization: `https://github.com/vitejs/vite/issues/11672#issuecomment-1397855641`
+    exclude: ["@remotion/whisper-web"],
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -37,6 +41,10 @@ export default defineConfig({
     allowedHosts: [
       "1a18e9b5688e.ngrok-free.app", // ✅ allow your ngrok domain
     ],
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],
